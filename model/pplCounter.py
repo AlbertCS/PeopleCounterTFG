@@ -19,22 +19,14 @@ class pplCounter:
 
 	def run():
 
-		# construct the argument parse and parse the arguments
-		ap = argparse.ArgumentParser()
-		ap.add_argument("-p", "--prototxt", required=False,
-			help="path to Caffe 'deploy' prototxt file")
-		ap.add_argument("-m", "--model", required=True,
-			help="path to Caffe pre-trained model")
-		ap.add_argument("-i", "--input", type=str,
-			help="path to optional input video file")
-		ap.add_argument("-o", "--output", type=str,
-			help="path to optional output video file")
-		# confidence default 0.4
-		ap.add_argument("-c", "--confidence", type=float, default=0.4,
-			help="minimum probability to filter weak detections")
-		ap.add_argument("-s", "--skip-frames", type=int, default=30,
-			help="# of skip frames between detections")
-		args = vars(ap.parse_args())
+		# Parameters definition
+		prototxtArg = ".\extras\deploy.prototxt"
+		modelArg = ".\extras\deploy.caffemodel"
+		#.\example_01.mp4 
+		inputArg = ""
+		outputArg = ""
+		confidenceArg = 0.4
+		skipFramesArg = 30
 
 		# initialize the list of class labels MobileNet SSD was trained to
 		# detect
@@ -44,18 +36,18 @@ class pplCounter:
 			"sofa", "train", "tvmonitor"]
 
 		# load our serialized model from disk
-		net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
+		net = cv2.dnn.readNetFromCaffe(prototxtArg, modelArg)
 
 		# if a video path was not supplied, grab a reference to the ip camera
-		if not args.get("input", False):
-			print("[INFO] Starting the live stream..")
-			vs = VideoStream(config.url).start()
+		if not inputArg:
+			print("[INFO] Starting the live stream.. in "+config.url)
+			vs = VideoStream(0).start()
 			time.sleep(2.0)
 
 		# otherwise, grab a reference to the video file
 		else:
 			print("[INFO] Starting the video..")
-			vs = cv2.VideoCapture(args["input"])
+			vs = cv2.VideoCapture(inputArg)
 
 		# initialize the video writer (we'll instantiate later if need be)
 		writer = None
@@ -92,11 +84,11 @@ class pplCounter:
 			# grab the next frame and handle if we are reading from either
 			# VideoCapture or VideoStream
 			frame = vs.read()
-			frame = frame[1] if args.get("input", False) else frame
+			frame = frame[1] if inputArg else frame
 
 			# if we are viewing a video and we did not grab a frame then we
 			# have reached the end of the video
-			if args["input"] is not None and frame is None:
+			if inputArg is not None and frame is None:
 				break
 
 			# resize the frame to have a maximum width of 500 pixels (the
@@ -111,9 +103,9 @@ class pplCounter:
 
 			# if we are supposed to be writing a video to disk, initialize
 			# the writer
-			if args["output"] is not None and writer is None:
+			if outputArg is not None and writer is None:
 				fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-				writer = cv2.VideoWriter(args["output"], fourcc, 30,
+				writer = cv2.VideoWriter(outputArg, fourcc, 30,
 					(W, H), True)
 
 			# initialize the current status along with our list of bounding
@@ -124,7 +116,7 @@ class pplCounter:
 
 			# check to see if we should run a more computationally expensive
 			# object detection method to aid our tracker
-			if totalFrames % args["skip_frames"] == 0:
+			if totalFrames % skipFramesArg == 0:
 				# set the status and initialize our new set of object trackers
 				status = "Detecting"
 				trackers = []
@@ -143,7 +135,7 @@ class pplCounter:
 
 					# filter out weak detections by requiring a minimum
 					# confidence
-					if confidence > args["confidence"]:
+					if confidence > confidenceArg:
 						# extract the index of the class label from the
 						# detections list
 						idx = int(detections[0, 0, i, 1])
