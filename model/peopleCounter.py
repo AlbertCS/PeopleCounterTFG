@@ -31,6 +31,7 @@ class pplCounter:
 		# (2) the correlation trackers
 		status = "Waiting"
 		rects = []
+		i=0
 
 		# check to see if we should run a more computationally expensive
 		# object detection method to aid our tracker
@@ -105,6 +106,8 @@ class pplCounter:
 		# object crosses this line we will determine whether they were
 		# moving 'up' or 'down'
 		cv2.line(frame, (0, H // 2), (W, H // 2), (0, 0, 0), 3)
+		#print("---i:")
+		#print(type(np.int32), i)
 		cv2.putText(frame, "-Prediction border - Entrance-", (10, H - ((i * 20) + 200)),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
@@ -173,7 +176,7 @@ class pplCounter:
 				cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 			cv2.circle(frame, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
 		
-
+		
 		return frame, totalUp, totalDown, empty, empty1, total, trackers
 
 			

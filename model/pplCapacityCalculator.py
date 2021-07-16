@@ -6,7 +6,7 @@ from peopleCounter import pplCounter
 from centroidtracker import CentroidTracker
 from imutils.video import VideoStream
 from imutils.video import FPS
-import config, time, cv2
+import config, time, cv2, thread
 from PIL import Image
 from PIL import ImageTk
 
@@ -24,7 +24,7 @@ def inicount():
     prototxtArg = ".\extras\deploy.prototxt"
     modelArg = ".\extras\deploy.caffemodel"
 	#.\example_01.mp4
-    inputArg = ""
+    inputArg = ".\example_01.mp4"
     confidenceArg = 0.4
     skipFramesArg = 30
     
@@ -41,13 +41,15 @@ def inicount():
     # if a video path was not supplied, grab a reference to the ip camera
     if not inputArg:
         print("[INFO] Starting the live stream.. in "+config.url)
+        #vs = thread.ThreadingClass(0)
         vs = VideoStream(0).start()
-        time.sleep(2.0)
+        #time.sleep(2.0)
 
     # otherwise, grab a reference to the video file
     else:
         print("[INFO] Starting the video..")
         vs = cv2.VideoCapture(inputArg)
+        #vs = thread.ThreadingClass(inputArg)
 
     # instantiate our centroid tracker, then initialize a list to store
     # each of our dlib correlation trackers, followed by a dictionary to
@@ -66,12 +68,14 @@ def inicount():
     totalFrames = 0
     totalDown = 0
     totalUp = 0
-    x = []
+    total = []
     empty=[]
     empty1=[]
 
     # start the frames per second throughput estimator
     fps = FPS().start()
+
+    pplC = pplCounter()
 
     # loop over frames from the video stream
     while True :
@@ -84,9 +88,10 @@ def inicount():
         # have reached the end of the video
         if inputArg is not None and frame is None:
             break
-
-        frame, totalUp, totalDown, empty, empty1, total, trackers  = pplCounter.countPPl(
+        
+        frame, totalUp, totalDown, empty, empty1, total, trackers  = pplC.countPPl(
             frame, W, H, totalFrames, skipFramesArg, net, confidenceArg, CLASSES, ct, trackableObjects, totalUp, empty, totalDown, empty1, trackers, total)
+        
         
         im =Image.fromarray(frame)
         img = ImageTk.PhotoImage(image=im)
