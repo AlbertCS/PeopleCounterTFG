@@ -6,15 +6,13 @@
     "configurations": [
 
 
+
         {
-            "name": "Python: Run.py",
+            "name": "Python: Current File",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--prototxt", "./extras/deploy.prototxt", 
-                "--model", "./extras/deploy.caffemodel", 
-                "--input", "./example_01.mp4"]
         }
     ]
 }

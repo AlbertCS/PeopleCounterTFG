@@ -1,3 +1,2 @@
-from model import pplCounter
+from model.peopleCounter import pplCounter
 
-pplCounter.pplCounter.run()

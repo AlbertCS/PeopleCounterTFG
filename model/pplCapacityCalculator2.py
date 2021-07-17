@@ -29,7 +29,7 @@ def inicount():
     inputArg = ".\example_01.mp4"
     confidenceArg = 0.4
     skipFramesArg = 30
-    
+
     # initialize the list of class labels MobileNet SSD was trained to
     # detect
     CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
@@ -39,11 +39,11 @@ def inicount():
 
     # load our serialized model from disk
     net = cv2.dnn.readNetFromCaffe(prototxtArg, modelArg)
+    print(inputArg)
 
     # if a video path was not supplied, grab a reference to the ip camera
     if not inputArg:
-        print("[INFO] Starting the live stream.. in "+config.url)
-        #vs = thread.ThreadingClass(0)
+        print("[INFO] Starting the live stream..")
         vs = VideoStream(0).start()
         #time.sleep(2.0)
 
@@ -51,7 +51,14 @@ def inicount():
     else:
         print("[INFO] Starting the video..")
         vs = cv2.VideoCapture(inputArg)
-        #vs = thread.ThreadingClass(inputArg)
+
+    # initialize the video writer (we'll instantiate later if need be)
+    writer = None
+
+    # initialize the frame dimensions (we'll set them as soon as we read
+    # the first frame from the video)
+    W = None
+    H = None
 
     # instantiate our centroid tracker, then initialize a list to store
     # each of our dlib correlation trackers, followed by a dictionary to
@@ -59,11 +66,6 @@ def inicount():
     ct = CentroidTracker(maxDisappeared=40, maxDistance=50)
     trackers = []
     trackableObjects = {}
-
-    # initialize the frame dimensions (we'll set them as soon as we read
-	# the first frame from the video)
-    W = None
-    H = None
 
     # initialize the total number of frames processed thus far, along
     # with the total number of objects that have moved either up or down
@@ -77,12 +79,15 @@ def inicount():
     # start the frames per second throughput estimator
     fps = FPS().start()
 
-    pplC = pplCounter()
+    if config.Thread:
+        vs = thread.ThreadingClass(inputArg)
 
     # loop over frames from the video stream
-    while True :
+    while True:
         # grab the next frame and handle if we are reading from either
-	    # VideoCapture or VideoStream
+        # VideoCapture or VideoStream
+        lblVideo.update()
+        lblVideo.after(1)
         frame = vs.read()
         frame = frame[1] if inputArg else frame
 
@@ -90,50 +95,52 @@ def inicount():
         # have reached the end of the video
         if inputArg is not None and frame is None:
             break
+
         # resize the frame to have a maximum width of 500 pixels (the
-		# less data we have, the faster we can process it), then convert
-		# the frame from BGR to RGB for dlib
+        # less data we have, the faster we can process it), then convert
+        # the frame from BGR to RGB for dlib
         frame = imutils.resize(frame, width = 500)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-		# if the frame dimensions are empty, set them
+        # if the frame dimensions are empty, set them
         if W is None or H is None:
             (H, W) = frame.shape[:2]
 
+        #output
 
-		# initialize the current status along with our list of bounding
-		# box rectangles returned by either (1) our object detector or
-		# (2) the correlation trackers
+        # initialize the current status along with our list of bounding
+        # box rectangles returned by either (1) our object detector or
+        # (2) the correlation trackers
         status = "Waiting"
         rects = []
 
-		# check to see if we should run a more computationally expensive
-		# object detection method to aid our tracker
+        # check to see if we should run a more computationally expensive
+        # object detection method to aid our tracker
         if totalFrames % skipFramesArg == 0:
-			# set the status and initialize our new set of object trackers
+            # set the status and initialize our new set of object trackers
             status = "Detecting"
             trackers = []
 
-			# convert the frame to a blob and pass the blob through the
-			# network and obtain the detections
+            # convert the frame to a blob and pass the blob through the
+            # network and obtain the detections
             blob = cv2.dnn.blobFromImage(frame, 0.007843, (W, H), 127.5)
             net.setInput(blob)
             detections = net.forward()
 
-			# loop over the detections
+            # loop over the detections
             for i in np.arange(0, detections.shape[2]):
-				# extract the confidence (i.e., probability) associated
-				# with the prediction
+                # extract the confidence (i.e., probability) associated
+                # with the prediction
                 confidence = detections[0, 0, i, 2]
 
-				# filter out weak detections by requiring a minimum
-				# confidence
+                # filter out weak detections by requiring a minimum
+                # confidence
                 if confidence > confidenceArg:
-					# extract the index of the class label from the
-					# detections list
+                    # extract the index of the class label from the
+                    # detections list
                     idx = int(detections[0, 0, i, 1])
 
-					# if the class label is not a person, ignore it
+                    # if the class label is not a person, ignore it
                     if CLASSES[idx] != "person":
                         continue
 
@@ -180,8 +187,6 @@ def inicount():
         # object crosses this line we will determine whether they were
         # moving 'up' or 'down'
         cv2.line(frame, (0, H // 2), (W, H // 2), (0, 0, 0), 3)
-        #print("---i:")
-        #print(type(np.int32), i)
         cv2.putText(frame, "-Prediction border - Entrance-", (10, H - ((i * 20) + 200)),
             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
@@ -227,7 +232,7 @@ def inicount():
                         totalDown += 1
                         empty1.append(totalDown)
                         #print(empty1[-1])
-                        # if the people limit exceeds over threshold
+                        # if the people limit exceeds over threshold, send an email alert
                         if sum(total) >= config.Threshold:
                             cv2.putText(frame, "-ALERT: People limit exceeded-", (10, frame.shape[0] - 80),
                                 cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 255), 2)
@@ -249,23 +254,65 @@ def inicount():
             cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             cv2.circle(frame, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
+
+        # construct a tuple of information we will be displaying on the
+        info = [
+        ("Exit", totalUp),
+        ("Enter", totalDown),
+        ("Status", status),
+        ]
+
+        info2 = [
+        ("Total people inside", total),
+        ]
+
+                # Display the output
+        for (i, (k, v)) in enumerate(info):
+            text = "{}: {}".format(k, v)
+            cv2.putText(frame, text, (10, H - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+
+        for (i, (k, v)) in enumerate(info2):
+            text = "{}: {}".format(k, v)
+            cv2.putText(frame, text, (265, H - ((i * 20) + 60)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+
+        # show the output frame
+        #cv2.imshow("Real-Time Monitoring/Analysis Window", frame)
+        im =Image.fromarray(frame)
+        img = ImageTk.PhotoImage(image=im)
+        lblVideo.configure(image=img)
+        lblVideo.image = img
         
-        cv2.imshow("Real-Time Monitoring/Analysis Window", frame)
-        #im =Image.fromarray(frame)
-        #img = ImageTk.PhotoImage(image=im)
-        #lblVideo.configure(image=img)
-        #lblVideo.image = img
+        key = cv2.waitKey(1) & 0xFF
+
+        # if the `q` key was pressed, break from the loop
+        if key == ord("q"):
+            break
 
         # increment the total number of frames processed thus far and
-		# then update the FPS counter
+        # then update the FPS counter
         totalFrames += 1
-
         fps.update()
+
 
     # stop the timer and display FPS information
     fps.stop()
     print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
     print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
+
+
+    # # if we are not using a video file, stop the camera video stream
+    # if not args.get("input", False):
+    # 	vs.stop()
+    #
+    # # otherwise, release the video file pointer
+    # else:
+    # 	vs.release()
+
+
+
+    # close any open windows
+    cv2.destroyAllWindows()
 
 
 
@@ -281,7 +328,7 @@ vs = None
 root = Tk()
 root.title("People counter")
 root.configure(background="#d5cbc9")
-root.geometry("1000x700")
+#root.geometry("1000x700")
 
 s = ttk.Style()
 s.configure("TFrame", background="#d5cbc9")

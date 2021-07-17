@@ -97,6 +97,8 @@ def inicount():
         img = ImageTk.PhotoImage(image=im)
         lblVideo.configure(image=img)
         lblVideo.image = img
+        lblVideo.after(1)
+        lblVideo.update()
 
         # increment the total number of frames processed thus far and
 		# then update the FPS counter
@@ -104,6 +106,9 @@ def inicount():
 
         fps.update()
 
+    print(totalDown)
+    print(totalUp)
+    print(total)
     # stop the timer and display FPS information
     fps.stop()
     print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
@@ -125,18 +130,20 @@ vs = None
 root = Tk()
 root.title("People counter")
 root.configure(background="#d5cbc9")
-root.geometry("1000x700")
+root.grid()
+root.geometry("700x425")
 
 s = ttk.Style()
 s.configure("TFrame", background="#d5cbc9")
 
+
 ## Menu ##
 
 btStart = Button(root, text="Start", command=inicount)
-btStart.grid(column=0, row=0)
+btStart.grid(column=0, row=0, sticky=W)
 
 btStop = Button(root, text="Stop", command=stopcount)
-btStop.grid(column=1, row=0)
+btStop.grid(column=1, row=0, sticky=W)
 
 lblVideo = Label(root)
 lblVideo.grid(column=0, row=1)
