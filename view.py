@@ -21,8 +21,8 @@ class pplCApp:
 
 
         # Where the video will be displayed
-        self.lblVideo = tk.Label(self.frmMain, text="Video", background="grey", width=75, height=30)
-        self.lblVideo.grid(column=0, row=1, columnspan=2, rowspan=2)
+        self.lblVideo = tk.Label(self.frmMain, text="Video", background="grey", width=100, height=100)
+        self.lblVideo.grid(column=0, row=1, columnspan=6, rowspan=6)
 
 
         # Entry values frame

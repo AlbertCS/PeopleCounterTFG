@@ -106,8 +106,6 @@ class pplCounter:
 		# object crosses this line we will determine whether they were
 		# moving 'up' or 'down'
 		cv2.line(frame, (0, H // 2), (W, H // 2), (0, 0, 0), 3)
-		#print("---i:")
-		#print(type(np.int32), i)
 		cv2.putText(frame, "-Prediction border - Entrance-", (10, H - ((i * 20) + 200)),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
@@ -154,16 +152,14 @@ class pplCounter:
 						empty1.append(totalDown)
 						#print(empty1[-1])
 						# if the people limit exceeds over threshold
-						if sum(total) >= config.Threshold:
+						if total >= config.Threshold:
 							cv2.putText(frame, "-ALERT: People limit exceeded-", (10, frame.shape[0] - 80),
 								cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 255), 2)
 
 						to.counted = True
 						
-					total = []
 					# compute the sum of total people inside
-					total.append(len(empty1)-len(empty))
-					#print("Total people inside:", x)
+					total = len(empty1)-len(empty)
 
 
 			# store the trackable object in our dictionary
@@ -177,7 +173,7 @@ class pplCounter:
 			cv2.circle(frame, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
 		
 		
-		return frame, totalUp, totalDown, empty, empty1, total, trackers
+		return frame, totalUp, totalDown, empty, empty1, total, trackers, status
 
 			
 			
