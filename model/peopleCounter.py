@@ -3,6 +3,7 @@ from trackableObject import TrackableObject
 import config
 import numpy as np
 import time, dlib, cv2, imutils
+from idlelib.tooltip import *
 
 
 t0 = time.time()
@@ -171,7 +172,7 @@ class pplCounter:
 			cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
 				cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 			cv2.circle(frame, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
-		
+
 		
 		return frame, totalUp, totalDown, empty, empty1, total, trackers, status
 
