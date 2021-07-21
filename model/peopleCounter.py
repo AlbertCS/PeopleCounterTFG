@@ -1,6 +1,5 @@
 #from mylib.centroidTracker import CentroidTracker
 from trackableObject import TrackableObject
-import config
 import numpy as np
 import time, dlib, cv2, imutils
 from idlelib.tooltip import *
@@ -14,7 +13,7 @@ class pplCounter:
 		pass
 
 	
-	def countPPl (self, frame, W, H, totalFrames, skipFramesArg, net, confidenceArg, CLASSES, ct, trackableObjects, totalUp, empty, totalDown, empty1, trackers, total):
+	def countPPl (self, frame, W, H, totalFrames, skipFramesArg, net, confidenceArg, CLASSES, ct, trackableObjects, totalUp, empty, totalDown, empty1, trackers, total, maximum):
 
 		# resize the frame to have a maximum width of 500 pixels (the
 		# less data we have, the faster we can process it), then convert
@@ -151,9 +150,9 @@ class pplCounter:
 					elif direction > 0 and centroid[1] > H // 2:
 						totalDown += 1
 						empty1.append(totalDown)
-						#print(empty1[-1])
+						
 						# if the people limit exceeds over threshold
-						if total >= config.Threshold:
+						if total >= maximum:
 							cv2.putText(frame, "-ALERT: People limit exceeded-", (10, frame.shape[0] - 80),
 								cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 255), 2)
 

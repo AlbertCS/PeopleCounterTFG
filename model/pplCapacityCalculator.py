@@ -1,26 +1,19 @@
+from imutils.video.fps import FPS
+from imutils.video.videostream import VideoStream
 from tooltip import Tooltip
 import tkinter as tk
 from tkinter import filedialog
-from typing import Text
-from PIL import Image
-from PIL import ImageTk
+from PIL import Image, ImageTk
 from peopleCounter import pplCounter
 from centroidtracker import CentroidTracker
-from imutils.video import VideoStream
-from imutils.video import FPS
-import cv2
+import cv2, datetime, csv
 from tkinter import ttk
 import numpy as np
-from PIL import Image
-from PIL import ImageTk
-
 
 
 
 class pplCApp:
     
-    global vs
-
 
     def __init__(self, master):
         self.master = master
@@ -31,7 +24,8 @@ class pplCApp:
         # Control buttons
         self.btStart = ttk.Button(self.frmMain, text="Start", command=self.inicount)
         self.btStart['padding'] = (0,2)
-        self.btStop = ttk.Button(self.frmMain, text="Stop")
+        self.stopClicked = False
+        self.btStop = ttk.Button(self.frmMain, text="Stop", command=self.stop)
         self.btStart.grid(column=0, row=0)
         self.btStop['padding'] = (0,2)
         self.btStop.grid(column=1, row=0)
@@ -78,7 +72,7 @@ class pplCApp:
         # Entry for the confidence value
         self.lblConfidence = ttk.Label(self.frmEntries, text="Confidence:")
         self.entConfidence = ttk.Entry(self.frmEntries, validate='key', validatecommand=(self.frmEntries.register(self.validateEntryFloat), '%P'), textvariable=self.varConfidence)
-        Tooltip(self.entConfidence, text='The minimum distance where two points are consideret the same in time')
+        Tooltip(self.entConfidence, text='The minimum distance where two points are consideret the same, in time')
         self.lblConfidence.grid(column=0, row=1, sticky=tk.W, pady=2)
         self.entConfidence.grid(column=1, row=1, sticky=tk.W, pady=2)
 
@@ -88,13 +82,22 @@ class pplCApp:
         Tooltip(self.entSkipFrames, text='The frames to skip to minimize the calculation')
         self.lblSkipFrames.grid(column=0, row=2, sticky=tk.W, pady=2)
         self.entSkipFrames.grid(column=1, row=2, sticky=tk.W, pady=2)
+        
+        # Entry for the maxim capacity value
+        self.lblMaximimCap = ttk.Label(self.frmEntries, text="Maximum Capacity:")
+        self.varMaximum = tk.IntVar()
+        self.varMaximum = 10
+        self.entMaximimCap = ttk.Entry(self.frmEntries, validate='key', validatecommand=(self.frmEntries.register(self.validateEntryInt), '%P'), textvariable=self.varMaximum)
+        Tooltip(self.entMaximimCap, text='The maxmum people allowed inside')
+        self.lblMaximimCap.grid(column=0, row=2, sticky=tk.W, pady=2)
+        self.entMaximimCap.grid(column=1, row=2, sticky=tk.W, pady=2)
 
         # Data space
         self.lblData= ttk.Label(self.frmEntries, text="Data:")
         self.frmData = tk.Frame(self.frmEntries,  background="white", highlightbackground="black", highlightthickness=1)
         Tooltip(self.frmData, text='Status: Current status of the program\nEnter: How many people had enter\nExit: How many people had exit\nTotal: Total balance of the people inside')
 
-        self.lblStatus = ttk.Label(self.frmData, text="Status: 0 ppl", background="white")
+        self.lblStatus = ttk.Label(self.frmData, text="Status: ", background="white")
         self.lblEnter = ttk.Label(self.frmData, text="Enter: 0 ppl", background="white")
         self.lblExit = ttk.Label(self.frmData, text="Exit: 0 ppl", background="white")
         self.lblTotal = ttk.Label(self.frmData, text="Total: 0 ppl", background="white")
@@ -105,6 +108,11 @@ class pplCApp:
 
         self.frmData.grid(column=0, row=5, sticky=tk.W, padx=(10,0))
         self.lblData.grid(column=0, row=4, sticky=tk.W, pady=(8,0))
+
+        # Log checkbutton
+        self.varcheckedLog = tk.IntVar()
+        self.chckbtLog = ttk.Checkbutton(self.frmEntries, variable=self.varcheckedLog, text="Activate log")
+        self.chckbtLog.grid(column=0, row=6, sticky=tk.W, pady=(5,0))
 
         # Fps label
         self.lblFPS = ttk.Label(self.frmMain, text="Fps:")
@@ -144,20 +152,14 @@ class pplCApp:
     def inicount(self):
 
         # Parameters definition
-        prototxtArg = ".\extras\deploy.prototxt"
-        modelArg = ".\extras\deploy.caffemodel"
-        #.\example_01.mp4
-        #inputArg = ".\example_01.mp4"
-        #confidenceArg = 0.4
-        #skipFramesArg = 30
-
+        prototxtArg = ".\deploy.prototxt"
+        modelArg = ".\deploy.caffemodel"
+        maximum = self.varMaximum
         cameraArg = self.varCamera.get()
         inputArg = self.btFileDialog['text']
-        print(inputArg)
         confidenceArg = float(self.varConfidence)
-        print(confidenceArg)
         skipFramesArg = self.varSkipFrames
-        print(skipFramesArg)
+
         
         # initialize the list of class labels MobileNet SSD was trained to
         # detect
@@ -174,14 +176,14 @@ class pplCApp:
             print("[INFO] Starting the live stream.. in "+cameraArg)
             # http://192.168.1.45:8080/video
             if "http" in cameraArg:
-                vs = VideoStream(cameraArg).start()
+                self.vs = VideoStream(cameraArg).start()
             else:
-                vs = VideoStream(int(cameraArg)).start()
+                self.vs = VideoStream(int(cameraArg)).start()
         # otherwise, grab a reference to the video file
         else:
             print("[INFO] Starting the video..")
-            vs = cv2.VideoCapture(inputArg)
-
+            self.vs = cv2.VideoCapture(inputArg)
+            
         # instantiate our centroid tracker, then initialize a list to store
         # each of our dlib correlation trackers, followed by a dictionary to
         # map each unique object ID to a TrackableObject
@@ -213,7 +215,7 @@ class pplCApp:
         while True :
             # grab the next frame and handle if we are reading from either
             # VideoCapture or VideoStream
-            frame = vs.read()
+            frame = self.vs.read()
             frame = frame[1] if (inputArg != "Select a video to process") else frame
 
             # if we are viewing a video and we did not grab a frame then we
@@ -222,18 +224,16 @@ class pplCApp:
                 break
             
             frame, totalUp, totalDown, empty, empty1, total, trackers, status  = pplC.countPPl(
-                frame, W, H, totalFrames, skipFramesArg, net, confidenceArg, CLASSES, ct, trackableObjects, totalUp, empty, totalDown, empty1, trackers, total)
+                frame, W, H, totalFrames, skipFramesArg, net, confidenceArg, CLASSES, ct, trackableObjects, totalUp, empty, totalDown, empty1, trackers, total, maximum)
             
             if np.shape(frame) != ():
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 im =Image.fromarray(rgb)
                 img = ImageTk.PhotoImage(image=im)
                 self.lblVideo.configure(image=img)
-                #self.lblVideo.image = img
                 self.lblVideo.after(1)
                 self.lblVideo.update()
             
-
             self.lblStatus.configure(text="Status: "+status)
             self.lblEnter.configure(text="Enter: {} ppl".format(totalDown))
             self.lblExit.configure(text="Exit: {} ppl".format(totalUp))
@@ -244,19 +244,30 @@ class pplCApp:
             totalFrames += 1
             fps.update()
 
+            if self.stopClicked:
+                break
 
+        print("[INFO] Analisis stoped")
         # stop the timer and display FPS information
         fps.stop()
         self.lblElapsedTime.configure(text="Elapsed time: {:.2f}".format(fps.elapsed()))
         self.lblFPS.configure(text="FPS: {:.2f}".format(fps.fps()))
 
-        self.vs.stop()
-        # # if we are not using a video file, stop the camera video stream
-        #if not inputArg:
-            #vs.stop()
+        # Initiate a simple log to save data at end of the day
+        if self.varcheckedLog:
+            date = [datetime.datetime.now()]
+            export_data = [24, totalDown, totalUp, total]
+            with open('Log.csv', 'w', encoding='UTF8') as myfile:
+                wr = csv.writer(myfile)
+                wr.writerow(("End Time", "In", "Out", "Total Inside"))
+                wr.writerow(export_data)
+
+
 
     def stop(self):
+        self.stopClicked = True
         self.vs.stop()
+        self.vs.stream.release()
         
 
 def main():
