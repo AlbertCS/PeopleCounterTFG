@@ -9,124 +9,114 @@ t0 = time.time()
 
 class pplCounter:
 
+	# Init function
 	def __init__(self):
 		pass
 
-	
+	# Main function to calculate the object that moved down and up
 	def countPPl (self, frame, W, H, totalFrames, skipFramesArg, net, confidenceArg, CLASSES, ct, trackableObjects, totalUp, empty, totalDown, empty1, trackers, total, maximum):
 
-		# resize the frame to have a maximum width of 500 pixels (the
-		# less data we have, the faster we can process it), then convert
+		# Resize the frame to have a maximum width of 500 pixels, and convert
 		# the frame from BGR to RGB for dlib
 		frame = imutils.resize(frame, width = 500)
 		rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-		# if the frame dimensions are empty, set them
+		# If the frame dimensions are empty, set them
 		if W is None or H is None:
 			(H, W) = frame.shape[:2]
 
-
-		# initialize the current status along with our list of bounding
+		# Initialize the current status along with our list of bounding
 		# box rectangles returned by either (1) our object detector or
 		# (2) the correlation trackers
 		status = "Waiting"
 		rects = []
 		i=0
 
-		# check to see if we should run a more computationally expensive
-		# object detection method to aid our tracker
+		# Reduce the frames calculation to reduce the computation time 
 		if totalFrames % skipFramesArg == 0:
-			# set the status and initialize our new set of object trackers
+			# Set the status and initialize our new set of object trackers
 			status = "Detecting"
 			trackers = []
 
-			# convert the frame to a blob and pass the blob through the
+			# Convert the frame to a blob and pass the blob through the
 			# network and obtain the detections
 			blob = cv2.dnn.blobFromImage(frame, 0.007843, (W, H), 127.5)
 			net.setInput(blob)
 			detections = net.forward()
 
-			# loop over the detections
+			# Loop over the detections
 			for i in np.arange(0, detections.shape[2]):
-				# extract the confidence (i.e., probability) associated
-				# with the prediction
+				# Extract the confidence associated with the prediction
 				confidence = detections[0, 0, i, 2]
 
-				# filter out weak detections by requiring a minimum
-				# confidence
+				# Filter out weak detections by requiring a minimum confidence
 				if confidence > confidenceArg:
-					# extract the index of the class label from the
-					# detections list
+					# Extract the index and the label, from the detections list
 					idx = int(detections[0, 0, i, 1])
 
-					# if the class label is not a person, ignore it
+					# If the class label is not a person, ignore it
 					if CLASSES[idx] != "person":
 						continue
 
-					# compute the (x, y)-coordinates of the bounding box
-					# for the object
+					# Compute the (x, y)-coordinates of the bounding box for the object
 					box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
 					(startX, startY, endX, endY) = box.astype("int")
 
-
-					# construct a dlib rectangle object from the bounding
-					# box coordinates and then start the dlib correlation
-					# tracker
+					# Construct a rectangle object from the bounding
+					# box coordinates and then start the correlation tracker
 					tracker = dlib.correlation_tracker()
 					rect = dlib.rectangle(startX, startY, endX, endY)
 					tracker.start_track(rgb, rect)
 
-					# add the tracker to our list of trackers so we can
+					# Add the tracker to our list of trackers so we can
 					# utilize it during skip frames
 					trackers.append(tracker)
 
-		# otherwise, we should utilize our object *trackers* rather than
-		# object *detectors* to obtain a higher frame processing throughput
+		# Otherwise, we should utilize our object *trackers* rather than
+		# object *detectors* 
 		else:
-			# loop over the trackers
+			# Loop over the trackers
 			for tracker in trackers:
-				# set the status of our system to be 'tracking' rather
-				# than 'waiting' or 'detecting'
+				# Set the status of our system to be 'tracking'
 				status = "Tracking"
 
-				# update the tracker and grab the updated position
+				# Update the tracker and grab the updated position
 				tracker.update(rgb)
 				pos = tracker.get_position()
 
-				# unpack the position object
+				# Unpack the position object
 				startX = int(pos.left())
 				startY = int(pos.top())
 				endX = int(pos.right())
 				endY = int(pos.bottom())
 
-				# add the bounding box coordinates to the rectangles list
+				# Add the bounding box coordinates to the rectangles list
 				rects.append((startX, startY, endX, endY))
 
-		# draw a horizontal line in the center of the frame -- once an
+		# Draw a horizontal line in the center of the frame -- once an
 		# object crosses this line we will determine whether they were
 		# moving 'up' or 'down'
 		cv2.line(frame, (0, H // 2), (W, H // 2), (0, 0, 0), 3)
 		cv2.putText(frame, "-Prediction border - Entrance-", (10, H - ((i * 20) + 200)),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
-		# use the centroid tracker to associate the (1) old object
+		# Use the centroid tracker to associate the (1) old object
 		# centroids with (2) the newly computed object centroids
 		objects = ct.update(rects)
 
-		# loop over the tracked objects
+		# Loop over the tracked objects
 		for (objectID, centroid) in objects.items():
-			# check to see if a trackable object exists for the current
-			# object ID
+			# Check to see if a trackable object exists for the current object ID
 			to = trackableObjects.get(objectID, None)
 
-			# if there is no existing trackable object, create one
+			# If there is no existing trackable object, create one
 			if to is None:
 				to = TrackableObject(objectID, centroid)
 
-			# otherwise, there is a trackable object so we can utilize it
+			# Otherwise, there is a trackable object so we can utilize it
 			# to determine direction
 			else:
-				# the difference between the y-coordinate of the *current*
+				# The difference between the y-coordinate of the *current*
 				# centroid and the mean of *previous* centroids will tell
 				# us in which direction the object is moving (negative for
 				# 'up' and positive for 'down')
@@ -134,9 +124,9 @@ class pplCounter:
 				direction = centroid[1] - np.mean(y)
 				to.centroids.append(centroid)
 
-				# check to see if the object has been counted or not
+				# Check to see if the object has been counted or not
 				if not to.counted:
-					# if the direction is negative (indicating the object
+					# If the direction is negative (indicating the object
 					# is moving up) AND the centroid is above the center
 					# line, count the object
 					if direction < 0 and centroid[1] < H // 2:
@@ -144,28 +134,28 @@ class pplCounter:
 						empty.append(totalUp)
 						to.counted = True
 
-					# if the direction is positive (indicating the object
+					# If the direction is positive (indicating the object
 					# is moving down) AND the centroid is below the
 					# center line, count the object
 					elif direction > 0 and centroid[1] > H // 2:
 						totalDown += 1
 						empty1.append(totalDown)
 						
-						# if the people limit exceeds over threshold
+						# If the people limit exceeds over threshold
 						if total >= maximum:
 							cv2.putText(frame, "-ALERT: People limit exceeded-", (10, frame.shape[0] - 80),
 								cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 255), 2)
 
 						to.counted = True
 						
-					# compute the sum of total people inside
+					# Compute the sum of total people inside
 					total = len(empty1)-len(empty)
 
 
-			# store the trackable object in our dictionary
+			# Store the trackable object in our dictionary
 			trackableObjects[objectID] = to
 
-			# draw both the ID of the object and the centroid of the
+			# Draw both the ID of the object and the centroid of the
 			# object on the output frame
 			text = "ID {}".format(objectID)
 			cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
