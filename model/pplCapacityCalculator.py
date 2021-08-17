@@ -2,7 +2,7 @@ from imutils.video.fps import FPS
 from imutils.video.videostream import VideoStream
 from tooltip import Tooltip
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import messagebox, filedialog
 from PIL import Image, ImageTk
 from peopleCounter import pplCounter
 from centroidtracker import CentroidTracker
@@ -41,7 +41,7 @@ class pplCApp:
         self.frmEntries.grid(column=2, row=1, rowspan=2, sticky=tk.N)
 
         # Frame for the radiobuttons
-        self.frmInput = ttk.Frame(self.frmEntries)
+        self.frmInput = tk.Frame(self.frmEntries)
         
         # Radiobutton for the selection of the input
         self.varCamera = tk.StringVar()
@@ -63,18 +63,20 @@ class pplCApp:
 
         # Entry for the confidence value
         self.varConfidence = tk.StringVar()
-        self.varConfidence = "0.4"
+        #self.varConfidence = "0.4"
         self.lblConfidence = ttk.Label(self.frmEntries, text="Confidence:")
         self.entConfidence = ttk.Entry(self.frmEntries, validate='key', validatecommand=(self.frmEntries.register(self.validateEntryFloat), '%P'), textvariable=self.varConfidence)
-        Tooltip(self.entConfidence, text='The minimum distance where two points are consideret the same, in time')
+        self.entConfidence.insert(1, "0.4")
+        Tooltip(self.entConfidence, text='To filter weak detections, minimum probability to consider a detection as a good one')
         self.lblConfidence.grid(column=0, row=1, sticky=tk.W, pady=2)
         self.entConfidence.grid(column=1, row=1, sticky=tk.W, pady=2)
 
         # Entry for the skipFrames value
         self.varSkipFrames = tk.IntVar()
-        self.varSkipFrames = 30
+        #self.varSkipFrames = 30
         self.lblSkipFrames = ttk.Label(self.frmEntries, text="SkipFrames:")
         self.entSkipFrames = ttk.Entry(self.frmEntries, validate='key', validatecommand=(self.frmEntries.register(self.validateEntryInt), '%P'), textvariable=self.varSkipFrames)
+        self.entSkipFrames.insert(0, "3")
         Tooltip(self.entSkipFrames, text='The frames to skip to minimize the calculation')
         self.lblSkipFrames.grid(column=0, row=2, sticky=tk.W, pady=2)
         self.entSkipFrames.grid(column=1, row=2, sticky=tk.W, pady=2)
@@ -82,11 +84,12 @@ class pplCApp:
         # Entry for the maxim capacity value
         self.lblMaximimCap = ttk.Label(self.frmEntries, text="Maximum Capacity:")
         self.varMaximum = tk.IntVar()
-        self.varMaximum = 10
-        self.entMaximimCap = ttk.Entry(self.frmEntries, validate='key', validatecommand=(self.frmEntries.register(self.validateEntryInt), '%P'), textvariable=self.varMaximum)
+        #self.varMaximum = 10
+        self.entMaximimCap = ttk.Entry(self.frmEntries,validate='key', validatecommand=(self.frmEntries.register(self.validateEntryInt), '%P'), textvariable=self.varMaximum)
+        self.entMaximimCap.insert(0, "1")
         Tooltip(self.entMaximimCap, text='The maxmum people allowed inside')
-        self.lblMaximimCap.grid(column=0, row=2, sticky=tk.W, pady=2)
-        self.entMaximimCap.grid(column=1, row=2, sticky=tk.W, pady=2)
+        self.lblMaximimCap.grid(column=0, row=3, sticky=tk.W, pady=2)
+        self.entMaximimCap.grid(column=1, row=3, sticky=tk.W, pady=2)
 
         # Data space
         self.lblData= ttk.Label(self.frmEntries, text="Data:")
@@ -151,12 +154,13 @@ class pplCApp:
         # Parameters definition
         prototxtArg = ".\model\deploy.prototxt"
         modelArg = ".\model\deploy.caffemodel"
-        maximum = self.varMaximum
+        maximum = self.varMaximum.get()
         cameraArg = self.varCamera.get()
-        inputArg = self.btFileDialog['text']
-        confidenceArg = float(self.varConfidence)
-        skipFramesArg = self.varSkipFrames
-
+        inputArg = ".\example_01.mp4"
+        #inputArg = self.btFileDialog['text']
+        confidenceArg = float(self.varConfidence.get())
+        skipFramesArg = self.varSkipFrames.get()
+        self.stopClicked = False
         
         # Initialize the list of class labels of the MobileNet SSD 
         CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
@@ -221,6 +225,13 @@ class pplCApp:
             frame, totalUp, totalDown, empty, empty1, total, trackers, status  = pplC.countPPl(
                 frame, W, H, totalFrames, skipFramesArg, net, confidenceArg, CLASSES, ct, trackableObjects, totalUp, empty, totalDown, empty1, trackers, total, maximum)
             
+
+            # If the people limit exceeds over threshold
+            if total >= maximum:
+                cv2.putText(frame, "ALERT: Limit of people exceeded", (10, frame.shape[0] - 80),
+				cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 255), 2)
+
+
             # Print the frame in the window
             if np.shape(frame) != ():
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -235,6 +246,8 @@ class pplCApp:
             self.lblEnter.configure(text="Enter: {} ppl".format(totalDown))
             self.lblExit.configure(text="Exit: {} ppl".format(totalUp))
             self.lblTotal.configure(text="Total inside: {} ppl".format(total))
+
+  
 
             # Increment the total number of frames processed
             totalFrames += 1

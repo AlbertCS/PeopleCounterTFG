@@ -140,11 +140,6 @@ class pplCounter:
 					elif direction > 0 and centroid[1] > H // 2:
 						totalDown += 1
 						empty1.append(totalDown)
-						
-						# If the people limit exceeds over threshold
-						if total >= maximum:
-							cv2.putText(frame, "-ALERT: People limit exceeded-", (10, frame.shape[0] - 80),
-								cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 255), 2)
 
 						to.counted = True
 						
