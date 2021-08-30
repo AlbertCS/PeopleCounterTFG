@@ -124,7 +124,7 @@ class pplCApp:
 
     # Function to select the video file
     def browseFiles(self):
-        filename = filedialog.askopenfilename(initialdir = "/",title = "Select a File",filetypes = (("Text files","*.mp4*"),("all files","*.*")))
+        filename = filedialog.askopenfilename(initialdir = "/",title = "Select a File",filetypes = (("Text files","*.mp4*")))
         self.btFileDialog.configure(text=filename)
    
     # Function to only allow float in the entry
@@ -156,8 +156,8 @@ class pplCApp:
         modelArg = ".\model\deploy.caffemodel"
         maximum = self.varMaximum.get()
         cameraArg = self.varCamera.get()
-        inputArg = ".\example_01.mp4"
-        #inputArg = self.btFileDialog['text']
+        #inputArg = ".\example_01.mp4"
+        inputArg = self.btFileDialog['text']
         confidenceArg = float(self.varConfidence.get())
         skipFramesArg = self.varSkipFrames.get()
         self.stopClicked = False
