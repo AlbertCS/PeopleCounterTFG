@@ -2,7 +2,7 @@ from imutils.video.fps import FPS
 from imutils.video.videostream import VideoStream
 from tooltip import Tooltip
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import filedialog
 from PIL import Image, ImageTk
 from peopleCounter import pplCounter
 from centroidtracker import CentroidTracker
@@ -73,7 +73,6 @@ class pplCApp:
 
         # Entry for the skipFrames value
         self.varSkipFrames = tk.IntVar()
-        #self.varSkipFrames = 30
         self.lblSkipFrames = ttk.Label(self.frmEntries, text="SkipFrames:")
         self.entSkipFrames = ttk.Entry(self.frmEntries, validate='key', validatecommand=(self.frmEntries.register(self.validateEntryInt), '%P'), textvariable=self.varSkipFrames)
         self.entSkipFrames.insert(0, "3")
@@ -84,7 +83,6 @@ class pplCApp:
         # Entry for the maxim capacity value
         self.lblMaximimCap = ttk.Label(self.frmEntries, text="Maximum Capacity:")
         self.varMaximum = tk.IntVar()
-        #self.varMaximum = 10
         self.entMaximimCap = ttk.Entry(self.frmEntries,validate='key', validatecommand=(self.frmEntries.register(self.validateEntryInt), '%P'), textvariable=self.varMaximum)
         self.entMaximimCap.insert(0, "1")
         Tooltip(self.entMaximimCap, text='The maxmum people allowed inside')
@@ -156,7 +154,6 @@ class pplCApp:
         modelArg = ".\model\deploy.caffemodel"
         maximum = self.varMaximum.get()
         cameraArg = self.varCamera.get()
-        #inputArg = ".\example_01.mp4"
         inputArg = self.btFileDialog['text']
         confidenceArg = float(self.varConfidence.get())
         skipFramesArg = self.varSkipFrames.get()
@@ -174,7 +171,6 @@ class pplCApp:
         # If a video path was not supplied, grab the ip camera or the webcam
         if inputArg == "Select a video to process":
             print("[INFO] Starting the live stream.. in "+cameraArg)
-            # http://192.168.1.45:8080/video
             if "http" in cameraArg:
                 self.vs = VideoStream(cameraArg).start()
             else:
@@ -246,8 +242,6 @@ class pplCApp:
             self.lblEnter.configure(text="Enter: {} ppl".format(totalDown))
             self.lblExit.configure(text="Exit: {} ppl".format(totalUp))
             self.lblTotal.configure(text="Total inside: {} ppl".format(total))
-
-  
 
             # Increment the total number of frames processed
             totalFrames += 1
