@@ -15,3 +15,4 @@ A continuació es detallaran els passos a realitzar per poder instal·lar i exec
         a.	py pplCapacityCalculator.py 
 
 
+Modificació del programa https://github.com/saimj7/People-Counting-in-Real-Time
